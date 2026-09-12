@@ -4,7 +4,7 @@ from app.db.database import get_db
 from app.dependecies.auth import get_current_user
 from app.repositories.user import UserRepository
 from app.service.user import UserService
-from app.schemas.user import UserLogin, UserResponse, TokenResponse
+from app.schemas.user import TokenRefreshRequest, TokenRefreshResponse, UserLogin, UserResponse, TokenResponse
 from app.schemas.user import UserRegister
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -50,8 +50,17 @@ async def get_me(
     ):
     return current_user
 
-
-
+@router.post("/refresh", response_model=TokenRefreshResponse)
+async def refresh_token(
+    payload: TokenRefreshRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    service = UserService(db)
+    try:
+        result = service.refresh_token(payload.refresh_token)
+        return result
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error))
 
 
 

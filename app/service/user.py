@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
 from app.schemas.user import UserRegister, UserLogin
 from app.repositories.user import UserRepository
 
@@ -34,12 +34,27 @@ class UserService:
         if not is_password_valid:
             raise ValueError("Invalid email or password")
 
-        token= create_access_token(user.id)
-
+        access_token= create_access_token(user.id)
+        refresh_token = create_refresh_token(user.id)
+        
         return {
-            "access_token": token,
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type":"bearer"
+            
         }
+
+    def refresh_token(self, refresh_token: str):
+        user_id  = decode_refresh_token(refresh_token)
+        access_token = create_access_token(user_id)
+        return {
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+        
+
+
+
 
         
 
