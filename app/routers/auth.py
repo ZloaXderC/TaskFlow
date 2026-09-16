@@ -57,7 +57,7 @@ async def refresh_token(
 ):
     service = UserService(db)
     try:
-        result = service.refresh_token(payload.refresh_token)
+        result = await service.refresh_token(payload.refresh_token)
         return result
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(error))

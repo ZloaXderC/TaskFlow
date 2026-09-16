@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import create_access_token, create_refresh_token, decode_refresh_token, hash_password, verify_password
 from app.schemas.user import UserRegister, UserLogin
@@ -44,9 +46,16 @@ class UserService:
             
         }
 
-    def refresh_token(self, refresh_token: str):
-        user_id  = decode_refresh_token(refresh_token)
-        access_token = create_access_token(user_id)
+    async def refresh_token(self, refresh_token: str):
+        user_id  = UUID(decode_refresh_token(refresh_token))
+
+        user = await self.repository.get_by_id(user_id)
+        
+        if not user:
+            raise ValueError("User not found")
+
+        access_token = create_access_token(user.id)
+
         return {
             "access_token": access_token,
             "token_type": "bearer"

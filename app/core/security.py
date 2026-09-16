@@ -42,6 +42,7 @@ def decode_access_token(token:str):
 
         user_id = payload.get("sub")
         token_type  = payload.get("type")
+        
         if token_type != "access":
             raise ValueError("Invalid token type")
 
@@ -74,6 +75,7 @@ def decode_refresh_token(token:str):
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM]
         )
+        
 
         user_id = payload.get("sub")
         token_type  = payload.get("type")

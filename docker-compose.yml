@@ -21,6 +21,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/taskflow
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     depends_on:
       - postgres
 
