@@ -1,4 +1,5 @@
-from uuid import UUID
+from uuid import UUID, uuid4
+from app.schemas.refresh_token import RefreshTokenData, RefreshTokenPayload
 from pwdlib import PasswordHash
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -51,12 +52,14 @@ def decode_access_token(token:str):
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token")
 
-def create_refresh_token(user_id:UUID) -> str:
+def create_refresh_token(user_id:UUID) -> RefreshTokenData:
     expires_at = datetime.now(timezone.utc) + timedelta(days=30)
+    jti = uuid4()
     payload = {
         "sub": str(user_id),
         "type": "refresh",
-        "exp": expires_at
+        "exp": expires_at,
+        "jti": str(jti)
     }
 
     token = jwt.encode(
@@ -65,7 +68,7 @@ def create_refresh_token(user_id:UUID) -> str:
         algorithm= settings.JWT_ALGORITHM
     )
 
-    return token
+    return RefreshTokenData(token = token, jti = jti , expires_at = expires_at)
 
 
 def decode_refresh_token(token:str):
@@ -79,11 +82,14 @@ def decode_refresh_token(token:str):
 
         user_id = payload.get("sub")
         token_type  = payload.get("type")
+        jti = payload.get("jti")
         if token_type != "refresh":
             raise ValueError("Invalid token type")
+        if not jti:
+            raise ValueError("Invalid jti")
 
-        return user_id
+        return RefreshTokenPayload(user_id=user_id,jti=jti)
 
-    except jwt.InvalidTokenError:
+    except (jwt.InvalidTokenError, ValueError):
         raise ValueError("Invalid token")
     
