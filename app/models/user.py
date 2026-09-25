@@ -15,6 +15,7 @@ class UserORM(Base):
     email: Mapped[str] = mapped_column(unique=True)
     hashed_password: Mapped[str] = mapped_column()
     tasks: Mapped[list["TaskORM"]] = relationship(back_populates="user", cascade="all, delete-orphan") # type: ignore
+    refresh_tokens = relationship("RefreshTokenORM", back_populates = "user")
 
 
 
