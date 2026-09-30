@@ -68,6 +68,7 @@ async def test_current_login(client):
 
     assert "access_token" in data
     assert data["token_type"] == "bearer"
+    assert "refresh_token" in data
 
 @pytest.mark.asyncio
 async def test_incorrect_password(client):
@@ -229,7 +230,7 @@ async def test_get_tasks(client):
 
 
 @pytest.mark.asyncio
-async def research_task(client):
+async def test_research_task(client):
     await client.post(
         "/auth/register",
         json = {
@@ -464,7 +465,7 @@ async def null_task(client):
     assert response.status_code == 422
 
 @pytest.mark.asyncio
-async def task_filter_complited(client):
+async def test_task_filter_complited(client):
     await client.post(
             "/auth/register",
             json = {
@@ -480,7 +481,7 @@ async def task_filter_complited(client):
                 "password":"12345"
             }
         )
-    token = login.json()["acess_token"]
+    token = login.json()["access_token"]
 
     create_task_1 = await client.post(
             "task",
@@ -488,8 +489,7 @@ async def task_filter_complited(client):
                 "Authorization": f"Bearer {token}"
             },
             json = {
-                "title": "task1",
-                "complited": True
+                "title": "task1"
             }
         )
 
@@ -500,9 +500,22 @@ async def task_filter_complited(client):
             },
             json = {
                 "title": "task2",
-                "complited": False
             }
         )
+
+    task_id = create_task_1.json()["id"]
+
+    update_task = await client.patch(
+        f"/task/{task_id}",
+        headers={
+            "Authorization": f"Bearer {token}"
+        },
+        json={
+            "complited": True
+        }
+)
+
+    assert update_task.status_code == 200
 
     response = await client.get(
         "task",
@@ -510,7 +523,7 @@ async def task_filter_complited(client):
             "Authorization":f"Bearer {token}"
         },
         params = {
-            "comlited": True
+            "complited": True
         }
     )
 
@@ -578,3 +591,354 @@ async def test_search(client):
 
     assert len(data) ==1
     assert data[0]["title"] =="Buy milk"
+
+@pytest.mark.asyncio
+async def test_refresh_token(client):
+    await client.post(
+                    "/auth/register",
+                    json = {
+                        "email":"test@example.com",
+                        "password":"12345"
+                    }
+                )
+                
+    login = await client.post(
+            "/auth/login",
+            data = {
+                "username":"test@example.com",
+                "password":"12345"
+            }
+        )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    response = await client.post(
+        "/auth/refresh",
+        json = {
+            "refresh_token": refresh_token
+        }
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_after_logout(client):
+    await client.post(
+                    "/auth/register",
+                    json = {
+                        "email":"test@example.com",
+                        "password":"12345"
+                    }
+                )
+                
+    login = await client.post(
+            "/auth/login",
+            data = {
+                "username":"test@example.com",
+                "password":"12345"
+            }
+        )
+    assert login.status_code == 200
+
+    refresh_token = login.json()["refresh_token"]
+
+    logout = await client.post(
+        "/auth/logout",
+        json = {
+            "refresh_token" : refresh_token
+        }
+    )
+    assert logout.status_code == 204
+
+    refresh = await client.post(
+        "/auth/refresh",
+        json = {
+            "refresh_token":refresh_token
+        }
+    )
+
+    assert refresh.status_code == 401
+
+
+
+@pytest.mark.asyncio
+async def test_user_cannot_update_other_user_task(client):
+    register_1 = await client.post(
+                    "/auth/register",
+                    json = {   
+                        "email":"test@example.com",
+                        "password":"12345"
+                    }
+                )
+                
+    login_1 = await client.post(
+            "/auth/login",
+            data = {
+                "username":"test@example.com",
+                "password":"12345"
+            }
+        )
+    assert login_1.status_code == 200
+
+    token_1 = login_1.json()["access_token"]
+
+    task1 = await client.post(
+        "/task",
+        headers = {
+            "Authorization": f"Bearer {token_1}"
+        },
+        json = {
+            "title": "private_task"
+        }
+    )
+    assert task1.status_code == 201
+
+    task_id = task1.json()["id"]
+
+    register_2 = await client.post(
+                        "/auth/register",
+                        json = {
+                            "email":"tes@example.com",
+                            "password":"12345"
+                        }
+                    )
+                    
+    login_2 = await client.post(
+            "/auth/login",
+            data = {
+                "username":"tes@example.com",
+                "password":"12345"
+            }
+        )
+    assert login_2.status_code == 200
+    
+
+    token_2 = login_2.json()["access_token"]
+
+
+    response = await client.patch(
+        f"/task/{task_id}",
+        headers = {
+            "Authorization" : f"Bearer {token_2}"
+        },
+        json = {
+            "title": "hacked task"
+        }
+    )
+
+    
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_other_task(client):
+    register_1 = await client.post(
+                        "/auth/register",
+                        json = {   
+                            "email":"test@example.com",
+                            "password":"12345"
+                        }
+                    )
+                    
+    login_1 = await client.post(
+            "/auth/login",
+            data = {
+                "username":"test@example.com",
+                "password":"12345"
+            }
+        )
+    assert login_1.status_code == 200
+
+    token_1 = login_1.json()["access_token"]
+
+    task1 = await client.post(
+        "/task",
+        headers = {
+            "Authorization": f"Bearer {token_1}"
+        },
+        json = {
+            "title": "private_task"
+        }
+    )
+    assert task1.status_code == 201
+
+    task_id = task1.json()["id"]
+
+    register_2 = await client.post(
+                        "/auth/register",
+                        json = {
+                            "email":"tes@example.com",
+                            "password":"12345"
+                        }
+                    )
+                    
+    login_2 = await client.post(
+            "/auth/login",
+            data = {
+                "username":"tes@example.com",
+                "password":"12345"
+            }
+        )
+    assert login_2.status_code == 200
+    
+
+    token_2 = login_2.json()["access_token"]
+
+
+    response = await client.delete(
+        f"/task/{task_id}",
+        headers = {
+            "Authorization" : f"Bearer {token_2}"
+        }
+    )
+
+    
+    assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_login_unknow_user(client):
+    response = await client.post(
+        "/auth/login",
+        data = {
+            "username": "13123124",
+            "password": "dawadaw"
+        }
+    )
+    assert response.status_code ==401
+
+@pytest.mark.asyncio
+async def test_get_not_existing_task(client):
+    register_2 = await client.post(
+        "/auth/register",
+        json = {
+            "email":"tes@example.com",
+            "password":"12345"
+        }
+    )
+
+    login = await client.post(
+                "/auth/login",
+                data = {
+                    "username":"tes@example.com",
+                    "password":"12345"
+                }
+            )
+    assert login.status_code == 200
+    
+
+    token = login.json()["access_token"]
+
+
+    response = await client.get(
+        "/task/00000-0000--000",
+        headers = {
+            "Authorization":f"Bearer {token}"
+        }
+    )
+
+    response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_update_not_existing_task(client):
+    register_2 = await client.post(
+        "/auth/register",
+        json = {
+            "email":"tes@example.com",
+            "password":"12345"
+        }
+    )
+
+    login = await client.post(
+                "/auth/login",
+                data = {
+                    "username":"tes@example.com",
+                    "password":"12345"
+                }
+            )
+    assert login.status_code == 200
+    
+
+    token = login.json()["access_token"]
+
+
+    response = await client.patch(
+        "/task/00000-0000--000",
+        headers = {
+            "Authorization":f"Bearer {token}"
+        }
+    )
+
+    response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_delete_not_existing_task(client):
+    register_2 = await client.post(
+        "/auth/register",
+        json = {
+            "email":"tes@example.com",
+            "password":"12345"
+        }
+    )
+
+    login = await client.post(
+                "/auth/login",
+                data = {
+                    "username":"tes@example.com",
+                    "password":"12345"
+                }
+            )
+    assert login.status_code == 200
+    
+
+    token = login.json()["access_token"]
+
+
+    response = await client.delete(
+        "/task/00000-0000--000",
+        headers = {
+            "Authorization":f"Bearer {token}"
+        }
+    )
+
+    response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_long_title(client):
+    register_2 = await client.post(
+        "/auth/register",
+        json = {
+            "email":"tes@example.com",
+            "password":"12345"
+        }
+    )
+
+    login = await client.post(
+                "/auth/login",
+                data = {
+                    "username":"tes@example.com",
+                    "password":"12345"
+                }
+            )
+    assert login.status_code == 200
+    
+
+    token = login.json()["access_token"]
+
+
+    response = await client.post(
+        "/task",
+        headers = {
+            "Authorization":f"Bearer {token}"
+        },
+        json = {
+            "title":"132"*13123      
+            }
+    )
+
+    response.status_code == 422

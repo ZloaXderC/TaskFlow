@@ -137,4 +137,3 @@ class TaskRepository:
         task = result.scalar_one_or_none()
 
         return task
-    

@@ -42,12 +42,20 @@ class TaskService:
             self,
             task_id: UUID,
             user_id: UUID,
-            task_data: TaskUpdate
+            task_data: TaskUpdate,
+            current_user
     ):
-        task = await self.repository.update(task_id,user_id,task_data)
+        
+        task = await self.repository.get_by_id(task_id,user_id) 
+       
 
-        if task is None:
+        if not task:
             raise ValueError("Task not found")
+        
+        if task.user_id != current_user.id:
+            raise ValueError("Access denied")
+
+        task = await self.repository.update(task_id,user_id,task_data)
         
         return task
 

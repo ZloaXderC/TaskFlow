@@ -70,17 +70,22 @@ async def update(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)  
 ):
+    print("UPDATE ROUTER CALLED")
     service = TaskService(db)
 
     try:
         task = await service.update(
-            task_id,
-            current_user.id,
-            task_data
+            task_id = task_id,
+            user_id=current_user.id,
+            task_data = task_data,
+            current_user = current_user
+            
         )
         return task
     
     except ValueError as error:
+        if str(error) == "Access denied":
+            raise HTTPException(status_code = 403, detail = str(error))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
 
