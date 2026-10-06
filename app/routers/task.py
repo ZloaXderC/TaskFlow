@@ -70,7 +70,6 @@ async def update(
     db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user)  
 ):
-    print("UPDATE ROUTER CALLED")
     service = TaskService(db)
 
     try:

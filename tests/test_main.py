@@ -18,7 +18,7 @@ async def test_register(client):
             "password": "123456"
         }
     )
-    print([getattr(route,"path", None) for route in app.routes])
+    
     assert response.status_code == 201
 
     data = response.json()
@@ -435,7 +435,7 @@ async def test_user_cannot_get_another_users_task(client):
     assert response.status_code ==404
 
 @pytest.mark.asyncio
-async def null_task(client):
+async def test_null_task(client):
     await client.post(
             "/auth/register",
             json = {
@@ -842,7 +842,7 @@ async def test_get_not_existing_task(client):
         }
     )
 
-    response.status_code == 404
+    assert response.status_code == 404
 
 @pytest.mark.asyncio
 async def test_update_not_existing_task(client):
@@ -874,7 +874,7 @@ async def test_update_not_existing_task(client):
         }
     )
 
-    response.status_code == 404
+    assert response.status_code == 404
 
 @pytest.mark.asyncio
 async def test_delete_not_existing_task(client):
@@ -906,7 +906,7 @@ async def test_delete_not_existing_task(client):
         }
     )
 
-    response.status_code == 404
+    assert response.status_code == 404
 
 @pytest.mark.asyncio
 async def test_long_title(client):
@@ -941,4 +941,4 @@ async def test_long_title(client):
             }
     )
 
-    response.status_code == 422
+    assert response.status_code == 422
